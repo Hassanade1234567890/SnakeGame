@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      background: #111;
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #0f0;
+      margin: 10px 0;
+    }
+    select, button, input {
+      margin: 5px;
+      padding: 6px 12px;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    #scoreboard {
+      color: white;
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      text-align: right;
+    }
+    #highscoreDisplay {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      color: white;
+      font-size: 18px;
+    }
+    #gameOverScreen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.8);
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      color: white;
+      z-index: 10;
+    }
+    #startScreen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.9);
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      color: white;
+      z-index: 20;
+    }
+    .powerup { background-color: gold; }
+  </style>
+</head>
+<body>
+  <div id="startScreen">
+    <h1>🐍 Snake Game</h1>
+    <button onclick="startGame()">▶ Start Game</button>
+  </div>
+
+  <h1 style="color:white;">🐍 Snake Game</h1>
+
+  <div class="controls">
+    <button onclick="togglePause()">⏯ Pause</button>
+    <button onclick="restartGame()">🔁 Restart</button>
+  </div>
+
+  <label for="skinSelect">🎨 Snake Color:</label>
+  <select id="skinSelect" onchange="changeSkin()">
+    <option value="green">Green</option>
+    <option value="red">Red</option>
+    <option value="yellow">Yellow</option>
+    <option value="blue">Blue</option>
+    <option value="orange">Orange</option>
+    <option value="rainbow">Rainbow</option>
+  </select>
+
+  <label for="themeSelect">🖼 Theme:</label>
+  <select id="themeSelect" onchange="changeTheme()">
+    <option value="#111">Dark</option>
+    <option value="#eee">Light</option>
+    <option value="#004d00">Forest</option>
+  </select>
+
+  <div id="highscoreDisplay">Highscore: <span id="highscore">0</span></div>
+
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div style="color:white;">Score: <span id="score">0</span></div>
+
+  <div class="controls">
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <button onclick="saveScore()">🏆 Add to Scoreboard</button>
+  </div>
+
+  <div id="scoreboard">
+    <h3>🏅 Scoreboard</h3>
+    <ul id="scoreList"></ul>
+  </div>
+
+  <div id="gameOverScreen">
+    <h2>💀 Game Over!</h2>
+    <p>Your score: <span id="finalScore">0</span></p>
+    <button onclick="restartGameFromScreen()">🔁 Play Again</button>
+  </div>
+
+  <audio id="eatSound" src="c:\Users\dell\Downloads\minecraft-eating-made-with-Voicemod.mp3"></audio>
+  <audio id="gameOverSound" src="c:\Users\dell\Downloads\super_mario_dies.mp3"></audio>
+  <audio id="powerupSound" src="c:\Users\dell\Downloads\super_mario_power_up.mp3"></audio>
+  <audio id="bgMusic" src="c:\Users\dell\Downloads\super-mario-bros-4293.mp3" loop></audio>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const box = 20;
+    const rows = canvas.height / box;
+    const cols = canvas.width / box;
+
+    let snake = [ { x: 9 * box, y: 9 * box } ];
+    let direction = 'RIGHT';
+    let apple = randomPos();
+    let score = 0;
+    let highscore = localStorage.getItem('highscore') || 0;
+    let paused = false;
+    let interval;
+    let skin = 'green';
+    let gameStarted = false;
+
+    function startGame() {
+      gameStarted = true;
+      document.getElementById('startScreen').style.display = 'none';
+      interval = setInterval(gameLoop, 150);
+      document.getElementById('bgMusic').play();
+    }
+
+    function randomPos() {
+      return {
+        x: Math.floor(Math.random() * cols) * box,
+        y: Math.floor(Math.random() * rows) * box
+      };
+    }
+
+    document.addEventListener('keydown', e => {
+      const key = e.key;
+      if (key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
+      else if (key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+      else if (key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
+      else if (key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+    });
+
+    function setDir(dir) {
+      if (dir === 'UP' && direction !== 'DOWN') direction = 'UP';
+      if (dir === 'DOWN' && direction !== 'UP') direction = 'DOWN';
+      if (dir === 'LEFT' && direction !== 'RIGHT') direction = 'LEFT';
+      if (dir === 'RIGHT' && direction !== 'LEFT') direction = 'RIGHT';
+    }
+
+    function gameLoop() {
+      if (paused) return;
+
+      const head = { ...snake[0] };
+      if (direction === 'UP') head.y -= box;
+      if (direction === 'DOWN') head.y += box;
+      if (direction === 'LEFT') head.x -= box;
+      if (direction === 'RIGHT') head.x += box;
+
+      if (
+        head.x < 0 || head.x >= canvas.width ||
+        head.y < 0 || head.y >= canvas.height ||
+        snake.some((s, i) => i > 0 && s.x === head.x && s.y === head.y)
+      ) {
+        clearInterval(interval);
+        document.getElementById('bgMusic').pause();
+        document.getElementById('bgMusic').currentTime = 0;
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('gameOverSound').play();
+        document.getElementById('gameOverScreen').style.display = 'flex';
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === apple.x && head.y === apple.y) {
+        score++;
+        document.getElementById('eatSound').play();
+        apple = randomPos();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      snake.forEach((segment, i) => {
+        ctx.fillStyle = skin === 'rainbow' ? `hsl(${i * 30}, 100%, 50%)` : skin;
+        ctx.fillRect(segment.x, segment.y, box, box);
+      });
+
+      ctx.fillStyle = 'red';
+      ctx.fillRect(apple.x, apple.y, box, box);
+      document.getElementById('score').textContent = score;
+
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem('highscore', highscore);
+      }
+      document.getElementById('highscore').textContent = highscore;
+    }
+
+    function togglePause() {
+      paused = !paused;
+    }
+
+    function restartGame() {
+      location.reload();
+    }
+
+    function restartGameFromScreen() {
+      document.getElementById('gameOverScreen').style.display = 'none';
+      location.reload();
+    }
+
+    function saveScore() {
+      const name = document.getElementById('playerName').value || 'Anonymous';
+      let scores = JSON.parse(localStorage.getItem('snakeScores') || '[]');
+      scores.push({ name, score });
+      scores.sort((a, b) => b.score - a.score);
+      localStorage.setItem('snakeScores', JSON.stringify(scores));
+      updateScoreboard();
+    }
+
+    function updateScoreboard() {
+      let scores = JSON.parse(localStorage.getItem('snakeScores') || '[]');
+      const list = document.getElementById('scoreList');
+      list.innerHTML = '';
+      scores.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = `${s.name}: ${s.score}`;
+        list.appendChild(li);
+      });
+    }
+
+    function changeSkin() {
+      skin = document.getElementById('skinSelect').value;
+    }
+
+    function changeTheme() {
+      const bg = document.getElementById('themeSelect').value;
+      document.body.style.background = bg;
+    }
+
+    updateScoreboard();
+  </script>
+</body>
+</html>

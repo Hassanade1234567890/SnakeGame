@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Snake Game</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,13 +13,14 @@
       font-family: Arial, sans-serif;
       background: #111;
       min-height: 100vh;
-      padding: 20px;
+      padding: 10px;
       position: relative;
     }
     canvas {
       background: #222;
       border: 2px solid #0f0;
       margin: 10px 0;
+      touch-action: none;
     }
     select, button, input {
       margin: 5px;
@@ -52,24 +54,38 @@
       color: white;
       z-index: 10;
     }
-    #startScreen {
+    .mobile-buttons {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mobile-buttons button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+    }
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(0,0,0,0.9);
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      color: white;
+      flex-direction: column;
       z-index: 20;
     }
-    .powerup { background-color: gold; }
   </style>
 </head>
 <body>
   <div id="startScreen">
-    <h1>🐍 Snake Game</h1>
-    <button onclick="startGame()">▶ Start Game</button>
+    <h2>Welcome to Snake Game 🐍</h2>
+    <button onclick="startGame()">▶️ Start Game</button>
   </div>
 
   <h1 style="color:white;">🐍 Snake Game</h1>
@@ -86,6 +102,15 @@
     <option value="yellow">Yellow</option>
     <option value="blue">Blue</option>
     <option value="orange">Orange</option>
+    <option value="purple">Purple</option>
+    <option value="cyan">Cyan</option>
+    <option value="pink">Pink</option>
+    <option value="white">White</option>
+    <option value="black">Black</option>
+    <option value="brown">Brown</option>
+    <option value="lime">Lime</option>
+    <option value="gold">Gold</option>
+    <option value="silver">Silver</option>
     <option value="rainbow">Rainbow</option>
   </select>
 
@@ -98,12 +123,14 @@
 
   <div id="highscoreDisplay">Highscore: <span id="highscore">0</span></div>
 
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <canvas id="gameCanvas" width="300" height="300"></canvas>
   <div style="color:white;">Score: <span id="score">0</span></div>
 
-  <div class="controls">
-    <input type="text" id="playerName" placeholder="Enter your name" />
-    <button onclick="saveScore()">🏆 Add to Scoreboard</button>
+  <div class="mobile-buttons">
+    <button onclick="setDir('UP')">⬆</button>
+    <button onclick="setDir('LEFT')">⬅</button>
+    <button onclick="setDir('DOWN')">⬇</button>
+    <button onclick="setDir('RIGHT')">➡</button>
   </div>
 
   <div id="scoreboard">
@@ -114,13 +141,14 @@
   <div id="gameOverScreen">
     <h2>💀 Game Over!</h2>
     <p>Your score: <span id="finalScore">0</span></p>
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <button onclick="saveScore()">🏆 Add to Scoreboard</button>
     <button onclick="restartGameFromScreen()">🔁 Play Again</button>
   </div>
 
   <audio id="eatSound" src="minecraft-eating-made-with-Voicemod.mp3"></audio>
-  <audio id="gameOverSound" src="super_mario_dies.mp3"></audio>
-  <audio id="powerupSound" src="super_mario_power_up.mp3"></audio>
-  <audio id="bgMusic" src="super-mario-bros-4293.mp3" loop></audio>
+  <audio id="gameOverSound" src="super_mario_dies"></audio>
+  <audio id="bgMusic" src="super-mario-bros4293.mp3" loop></audio>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -137,13 +165,13 @@
     let paused = false;
     let interval;
     let skin = 'green';
-    let gameStarted = false;
+    const bgMusic = document.getElementById('bgMusic');
 
     function startGame() {
-      gameStarted = true;
       document.getElementById('startScreen').style.display = 'none';
       interval = setInterval(gameLoop, 150);
-      document.getElementById('bgMusic').play();
+      bgMusic.volume = 0.3;
+      bgMusic.play();
     }
 
     function randomPos() {
@@ -183,9 +211,8 @@
         snake.some((s, i) => i > 0 && s.x === head.x && s.y === head.y)
       ) {
         clearInterval(interval);
-        document.getElementById('bgMusic').pause();
-        document.getElementById('bgMusic').currentTime = 0;
         document.getElementById('finalScore').textContent = score;
+        bgMusic.pause();
         document.getElementById('gameOverSound').play();
         document.getElementById('gameOverScreen').style.display = 'flex';
         return;
